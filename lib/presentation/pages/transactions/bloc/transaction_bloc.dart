@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:expense_tracker_mobile/core/enums/transaction_enums.dart';
 import 'package:expense_tracker_mobile/core/errors/failure.dart';
 import 'package:expense_tracker_mobile/core/services/category_cache_service.dart';
+import 'package:expense_tracker_mobile/core/services/refresh_event_service.dart';
 import 'package:expense_tracker_mobile/data/models/request/new_transaction_request.dart';
 import 'package:expense_tracker_mobile/domain/dto/category_dto.dart';
 import 'package:expense_tracker_mobile/domain/dto/transaction_dto.dart';
@@ -24,6 +25,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
   final DeleteTransactionUsecase _deleteTransactionUsecase;
   final UpdateTransactionUsecase _updateTransactionUsecase;
   final CategoryCacheService _cacheService;
+  final RefreshEventService _refreshEventService;
 
   var stateData = TransactionStateData();
 
@@ -39,6 +41,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     this._deleteTransactionUsecase,
     this._updateTransactionUsecase,
     this._cacheService,
+    this._refreshEventService,
   ) : super(TransactionInitial()) {
     on<CreateTransactionEvent>(_onCreateTransaction);
     on<GetCategoryEvent>(_onGetCategory);
@@ -85,6 +88,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       (message) {
         stateData = stateData.copyWith(message: message);
         emit(CreateTransactionSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }
@@ -147,6 +151,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       (_) {
         stateData = stateData.copyWith(message: 'Transaction deleted successfully');
         emit(DeleteTransactionSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }
@@ -169,6 +174,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
       (message) {
         stateData = stateData.copyWith(message: message);
         emit(UpdateTransactionSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }

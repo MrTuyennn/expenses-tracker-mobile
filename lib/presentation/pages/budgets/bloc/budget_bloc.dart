@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:expense_tracker_mobile/core/errors/failure.dart';
 import 'package:expense_tracker_mobile/core/services/category_cache_service.dart';
+import 'package:expense_tracker_mobile/core/services/refresh_event_service.dart';
 import 'package:expense_tracker_mobile/data/models/request/budget_request.dart';
 import 'package:expense_tracker_mobile/domain/dto/budget_dto.dart';
 import 'package:expense_tracker_mobile/domain/dto/category_dto.dart';
@@ -24,6 +25,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
   final DeleteBudgetUsecase _deleteBudgetUsecase;
   final GetCategoryUsecase _getCategoryUsecase;
   final CategoryCacheService _cacheService;
+  final RefreshEventService _refreshEventService;
 
   var stateData = BudgetStateData();
 
@@ -40,6 +42,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
     this._deleteBudgetUsecase,
     this._getCategoryUsecase,
     this._cacheService,
+    this._refreshEventService,
   ) : super(BudgetInitial()) {
     on<GetBudgetEvent>(_onGetBudget);
     on<GetTotalActiveBudgtesEvent>(_onGetTotalActiveBudgets);
@@ -153,6 +156,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
       (message) {
         stateData = stateData.copyWith(message: message);
         emit(CreateBudgetSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }
@@ -176,6 +180,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
       (message) {
         stateData = stateData.copyWith(message: message);
         emit(UpdateBudgetSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }
@@ -189,6 +194,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
       },
       (_) {
         emit(DeleteBudgetSuccess(data: stateData));
+        _refreshEventService.triggerRefresh(RefreshType.dashboard);
       },
     );
   }

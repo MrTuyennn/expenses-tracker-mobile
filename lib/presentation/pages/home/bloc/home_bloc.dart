@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
+import 'package:expense_tracker_mobile/core/services/refresh_event_service.dart';
 import 'package:expense_tracker_mobile/core/utils/date_utils.dart' as app_date_utils;
 import 'package:expense_tracker_mobile/domain/usecases/get_dashboard_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,11 +13,27 @@ part 'home_state.dart';
 @injectable
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final GetDashboardUsecase _getDashboardUsecase;
+  final RefreshEventService _refreshEventService;
+  StreamSubscription<RefreshType>? _refreshSubscription;
+  String _currentFilter = 'This Month';
 
-  HomeBloc(this._getDashboardUsecase) : super(HomeInitial()) {
+  HomeBloc(this._getDashboardUsecase, this._refreshEventService) : super(HomeInitial()) {
     on<HomeStarted>(_onHomeStarted);
     on<HomeRefresh>(_onHomeRefresh);
     on<FilterChanged>(_onFilterChanged);
+
+    // Listen for refresh events from other BLoCs
+    _refreshSubscription = _refreshEventService.stream.listen((type) {
+      if (type == RefreshType.dashboard || type == RefreshType.transactions) {
+        add(HomeRefresh(_currentFilter));
+      }
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _refreshSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onHomeStarted(HomeStarted event, Emitter<HomeState> emit) async {
@@ -38,6 +57,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
   Future<void> _loadHomeData(Emitter<HomeState> emit, String filter) async {
+    _currentFilter = filter; // Store for refresh events
     try {
       // Convert filter to start_date and end_date
       final (startDate, endDate) = app_date_utils.AppDateUtils.getDateRangeFromFilter(filter);
