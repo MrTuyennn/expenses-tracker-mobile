@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:expense_tracker_mobile/core/enums/transaction_enums.dart';
 import 'package:expense_tracker_mobile/core/errors/failure.dart';
+import 'package:expense_tracker_mobile/core/services/category_cache_service.dart';
 import 'package:expense_tracker_mobile/data/models/request/new_transaction_request.dart';
 import 'package:expense_tracker_mobile/domain/dto/category_dto.dart';
 import 'package:expense_tracker_mobile/domain/dto/transaction_dto.dart';
@@ -22,6 +23,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
   final GetTransactionUsecase _getTransactionUsecase;
   final DeleteTransactionUsecase _deleteTransactionUsecase;
   final UpdateTransactionUsecase _updateTransactionUsecase;
+  final CategoryCacheService _cacheService;
 
   var stateData = TransactionStateData();
 
@@ -36,6 +38,7 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
     this._getTransactionUsecase,
     this._deleteTransactionUsecase,
     this._updateTransactionUsecase,
+    this._cacheService,
   ) : super(TransactionInitial()) {
     on<CreateTransactionEvent>(_onCreateTransaction);
     on<GetCategoryEvent>(_onGetCategory);
@@ -46,16 +49,22 @@ class TransactionBloc extends Bloc<TransactionEvent, TransactionState> {
   }
 
   Future<void> _onGetCategory(GetCategoryEvent event, Emitter<TransactionState> emit) async {
-    final result = await _getCategoryUsecase.call();
-    result.fold(
-      (failure) {
-        emit(GetCategoryFailure(failure: failure, data: stateData));
-      },
-      (categories) {
-        stateData = stateData.copyWith(categories: categories);
-        emit(GetCategorySuccess(data: stateData));
-      },
-    );
+    try {
+      final categories = await _cacheService.getCategories(_getCategoryUsecase);
+      stateData = stateData.copyWith(categories: categories);
+      emit(GetCategorySuccess(data: stateData));
+    } catch (e) {
+      if (e is Failure) {
+        emit(GetCategoryFailure(failure: e, data: stateData));
+      } else {
+        emit(
+          GetCategoryFailure(
+            failure: UnknownFailure(message: e.toString()),
+            data: stateData,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _onCreateTransaction(CreateTransactionEvent event, Emitter<TransactionState> emit) async {

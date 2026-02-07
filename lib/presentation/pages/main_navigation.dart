@@ -36,19 +36,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0.1, 0),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeInOut)),
-            child: FadeTransition(opacity: animation, child: child),
-          );
-        },
-        child: Container(key: ValueKey<int>(_currentIndex), child: _pages[_currentIndex]),
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           boxShadow: [

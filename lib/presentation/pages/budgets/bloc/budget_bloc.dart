@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:expense_tracker_mobile/core/errors/failure.dart';
+import 'package:expense_tracker_mobile/core/services/category_cache_service.dart';
 import 'package:expense_tracker_mobile/data/models/request/budget_request.dart';
 import 'package:expense_tracker_mobile/domain/dto/budget_dto.dart';
 import 'package:expense_tracker_mobile/domain/dto/category_dto.dart';
@@ -22,6 +23,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
   final UpdateBudgetUsecase _updateBudgetUsecase;
   final DeleteBudgetUsecase _deleteBudgetUsecase;
   final GetCategoryUsecase _getCategoryUsecase;
+  final CategoryCacheService _cacheService;
 
   var stateData = BudgetStateData();
 
@@ -37,6 +39,7 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
     this._updateBudgetUsecase,
     this._deleteBudgetUsecase,
     this._getCategoryUsecase,
+    this._cacheService,
   ) : super(BudgetInitial()) {
     on<GetBudgetEvent>(_onGetBudget);
     on<GetTotalActiveBudgtesEvent>(_onGetTotalActiveBudgets);
@@ -60,35 +63,46 @@ class BudgetBloc extends Bloc<BudgetEvent, BudgetState> {
   Future<void> _onGetBudget(GetBudgetEvent event, Emitter<BudgetState> emit) async {
     emit(GetBudgetLoading(data: stateData));
 
-    // Get budgets and categories concurrently
+    // Get budgets first
     page = 1;
     currentStatusFilter = event.status;
     final budgetResult = await _getBudgetUsecase.call(page, perPage, sortBy, sortOrder, currentStatusFilter);
-    final categoryResult = await _getCategoryUsecase.call();
 
-    budgetResult.fold(
-      (failure) {
-        emit(GetBudgetFailure(failure: failure, data: stateData));
-      },
-      (budgetResponse) {
-        categoryResult.fold(
-          (failure) {
-            final budgets = BudgetDto.fromResponseList(budgetResponse.data);
-            stateData = stateData.copyWith(budgets: budgets, hasMoreData: budgets.length < budgetResponse.total);
-            emit(GetBudgetFailure(failure: failure, data: stateData));
-          },
-          (categories) {
-            final budgets = BudgetDto.fromResponseList(budgetResponse.data);
-            stateData = stateData.copyWith(
-              budgets: budgets,
-              categories: categories,
-              hasMoreData: budgets.length < budgetResponse.total,
-            );
-            emit(GetBudgetSuccess(data: stateData));
-          },
+    // Handle budget result
+    final budgetFailure = budgetResult.fold((failure) => failure, (_) => null);
+
+    if (budgetFailure != null) {
+      emit(GetBudgetFailure(failure: budgetFailure, data: stateData));
+      return;
+    }
+
+    // Extract budget response
+    final budgetResponse = budgetResult.fold((_) => throw Exception('Unreachable'), (response) => response);
+
+    // Now fetch categories asynchronously
+    try {
+      final categories = await _cacheService.getCategories(_getCategoryUsecase);
+      final budgets = BudgetDto.fromResponseList(budgetResponse.data);
+      stateData = stateData.copyWith(
+        budgets: budgets,
+        categories: categories,
+        hasMoreData: budgets.length < budgetResponse.total,
+      );
+      emit(GetBudgetSuccess(data: stateData));
+    } catch (e) {
+      final budgets = BudgetDto.fromResponseList(budgetResponse.data);
+      stateData = stateData.copyWith(budgets: budgets, hasMoreData: budgets.length < budgetResponse.total);
+      if (e is Failure) {
+        emit(GetBudgetFailure(failure: e, data: stateData));
+      } else {
+        emit(
+          GetBudgetFailure(
+            failure: UnknownFailure(message: e.toString()),
+            data: stateData,
+          ),
         );
-      },
-    );
+      }
+    }
   }
 
   Future<void> _onLoadMoreBudget(LoadMoreBudgetEvent event, Emitter<BudgetState> emit) async {

@@ -11,6 +11,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:dio/dio.dart' as _i361;
 import 'package:expense_tracker_mobile/core/di/di_module.dart' as _i696;
+import 'package:expense_tracker_mobile/core/services/category_cache_service.dart'
+    as _i104;
 import 'package:expense_tracker_mobile/core/services/session_service.dart'
     as _i125;
 import 'package:expense_tracker_mobile/data/datasources/remote/api_service.dart'
@@ -91,6 +93,9 @@ extension GetItInjectableX on _i174.GetIt {
     await gh.lazySingletonAsync<_i460.SharedPreferences>(
       () => diModule.sharedPreferences(),
       preResolve: true,
+    );
+    gh.lazySingleton<_i104.CategoryCacheService>(
+      () => _i104.CategoryCacheService(),
     );
     gh.lazySingleton<_i125.SessionService>(
       () => _i125.SessionService(gh<_i460.SharedPreferences>()),
@@ -175,16 +180,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i157.CreateBudgetUsecase>(
       () => _i157.CreateBudgetUsecase(gh<_i162.MainRepository>()),
     );
-    gh.factory<_i306.CategoryBloc>(
+    gh.lazySingleton<_i306.CategoryBloc>(
       () => _i306.CategoryBloc(
         gh<_i662.GetCategoryUsecase>(),
         gh<_i115.CreateCategoryUseCase>(),
         gh<_i590.UpdateCategoryUsecase>(),
         gh<_i685.DeleteCategoryUsecase>(),
+        gh<_i104.CategoryCacheService>(),
       ),
     );
     gh.factory<_i1001.RegisterBloc>(
       () => _i1001.RegisterBloc(gh<_i720.RegisterUsecase>()),
+    );
+    gh.factory<_i387.HomeBloc>(
+      () => _i387.HomeBloc(gh<_i1030.GetDashboardUsecase>()),
     );
     gh.factory<_i187.TransactionBloc>(
       () => _i187.TransactionBloc(
@@ -193,18 +202,7 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i58.GetTransactionUsecase>(),
         gh<_i826.DeleteTransactionUsecase>(),
         gh<_i965.UpdateTransactionUsecase>(),
-      ),
-    );
-    gh.factory<_i387.HomeBloc>(
-      () => _i387.HomeBloc(gh<_i1030.GetDashboardUsecase>()),
-    );
-    gh.factory<_i815.BudgetBloc>(
-      () => _i815.BudgetBloc(
-        gh<_i322.GetBudgetUsecase>(),
-        gh<_i157.CreateBudgetUsecase>(),
-        gh<_i154.UpdateBudgetUsecase>(),
-        gh<_i1015.DeleteBudgetUsecase>(),
-        gh<_i662.GetCategoryUsecase>(),
+        gh<_i104.CategoryCacheService>(),
       ),
     );
     gh.factory<_i705.ProfileBloc>(
@@ -217,6 +215,16 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i754.LoginBloc>(
       () => _i754.LoginBloc(loginUsecase: gh<_i72.LoginUsecase>()),
+    );
+    gh.factory<_i815.BudgetBloc>(
+      () => _i815.BudgetBloc(
+        gh<_i322.GetBudgetUsecase>(),
+        gh<_i157.CreateBudgetUsecase>(),
+        gh<_i154.UpdateBudgetUsecase>(),
+        gh<_i1015.DeleteBudgetUsecase>(),
+        gh<_i662.GetCategoryUsecase>(),
+        gh<_i104.CategoryCacheService>(),
+      ),
     );
     return this;
   }
