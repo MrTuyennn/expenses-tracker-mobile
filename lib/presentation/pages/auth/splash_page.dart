@@ -65,7 +65,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
 
   void _startSplashSequence() {
     _animationController.forward();
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) {
         if (_isLoggedIn()) {
           Navigator.pushReplacementNamed(context, RouteName.home.path);
